@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<meta name="author" content="Ing. Manuel Escamilla Arce">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Laboratorios 211 · 212 · 204 · Aula 203</title>
 <style>
@@ -13,6 +14,7 @@ body { margin: 0; overflow: hidden; background-color: #1a2230; font-family: 'Seg
 #botones button { font: inherit; font-size: 13px; color: #fff; background: rgba(27,36,51,0.9); border: 1px solid #4a5568; padding: 7px 14px; border-radius: 8px; cursor: pointer; text-align: left; }
 #botones button:hover { border-color: #61b0ff; }
 #botones hr { width: 100%; border: 0; border-top: 1px solid #4a5568; margin: 2px 0; }
+#autor { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); color: #fff; background: rgba(27,36,51,0.9); padding: 8px 18px; border-radius: 8px; border: 1px solid #4a5568; font-size: 13px; pointer-events: none; z-index: 100; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -37,7 +39,7 @@ body { margin: 0; overflow: hidden; background-color: #1a2230; font-family: 'Seg
   <p>Lab 211: 19 PCs · Lab 212: 15 PCs + servidor + mini split<br>Lab 204: 28 PCs + profesor + 10 racks (piso falso 20 cm)<br>Racks del 204: arrástralos con el mouse · R: girar el seleccionado<br>Aula 203: 40 sillas hacia la TV<br><br>
   Arrastrar: rotar · Rueda: zoom · Clic derecho: mover<br>W A S D / flechas: caminar · Q / E: bajar / subir · Shift: rápido</p>
 </div>
-
+<div id="autor">Render realizado por: Ing. Manuel Escamilla Arce</div>
 <script>
 // ============================ ESCENA GLOBAL ============================
 const scene = new THREE.Scene();
