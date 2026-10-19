@@ -36,7 +36,7 @@ body { margin: 0; overflow: hidden; background-color: #1a2230; font-family: 'Seg
 </div>
 <div id="info">
   <h1>Edificio de laboratorios</h1>
-  <p>Lab 211: 19 PCs · Lab 212: 15 PCs + servidor + mini split<br>Lab 204: 28 PCs + profesor + 10 racks (piso falso 20 cm)<br>Racks del 204: arrástralos con el mouse · R: girar el seleccionado<br>Aula 203: 40 sillas hacia la TV<br><br>
+  <p>Lab 211: 19 PCs · Lab 212: 15 PCs + servidor + mini split<br>Lab 204: 24 PCs + profesor + 10 racks (piso falso 20 cm)<br>Racks del 204: arrástralos con el mouse · R: girar el seleccionado<br>Aula 203: 40 sillas hacia la TV<br><br>
   Arrastrar: rotar · Rueda: zoom · Clic derecho: mover<br>W A S D / flechas: caminar · Q / E: bajar / subir · Shift: rápido</p>
 </div>
 <div id="autor">Render realizado por: Ing. Manuel Escamilla Arce</div>
@@ -400,12 +400,15 @@ function build204(root) {
 const DIM_X = 7.0, DIM_Z = 9.0, ALTO = 3.4;    // ancho (x) y largo (z): iguales al laboratorio 212
 const H = 0.20;                                // altura del piso falso sobre el cerámico
 const PANEL = 0.60;                            // panel estándar 60 x 60 cm
-const ISLAS = [[1.1, 4.475], [1.1, 7.425], [3.5, 4.475], [3.5, 7.425], [5.9, 1.525], [5.9, 4.475], [5.9, 7.425]]; // [x, z] centro de cada isla
-const PROF = [2.3, 1.3];                       // escritorio del profesor (de frente al grupo)
-const SERVIDOR = [0.5, 0.55];                 // rack, esquina libre junto al área del profesor
+const ISLAS_UV = [[2.2, 2.1], [4.6, 2.1], [7.0, 2.1], [2.2, 4.9], [4.6, 4.9], [7.0, 4.9]];   // 6 islas de 4 PCs: [u, v] (u: este, v: sur)
+const L = (u, v) => [DIM_X - v, u];             // (u, v) del laboratorio -> coordenadas locales [x, z]
+const ISLAS = ISLAS_UV.map(([u, v]) => L(u, v)); // centro de cada isla en coordenadas locales
+const PROF = L(1.0, 3.5);                      // escritorio del profesor, frente a la pantalla y de cara al grupo
+const SERVIDOR_UV = [8.7, 6.4];                // servidor en la esquina sureste, pegado a la pared este
+const SERVIDOR = L(SERVIDOR_UV[0], SERVIDOR_UV[1]);
 const PANTALLA_X = 3.5;                        // pantalla de 55" en la pared del fondo
 const PUERTA_Z = 5.95;                         // centro de la puerta en la pared derecha
-const TRONCAL_Z = 5.95;                        // pasillo por donde corre el cableado principal
+const TRONCAL_V = 3.5;                         // pasillo central (v) por donde corre el cableado principal
 
 
 const R = new THREE.Group(); R.position.set(-DIM_X / 2, 0, -DIM_Z / 2); root.add(R);
@@ -464,11 +467,10 @@ function par(x1, z1, x2, z2) {   // dos tendidos paralelos: eléctrico y red
   tramo(x1, z1, x2, z2, matRojo, horiz ? 0 : -0.07, horiz ? -0.07 : 0);
   tramo(x1, z1, x2, z2, matAzul, horiz ? 0 : 0.07, horiz ? 0.07 : 0);
 }
-par(SERVIDOR[0], SERVIDOR[1], SERVIDOR[0], TRONCAL_Z);                       // salida del servidor
-par(SERVIDOR[0], TRONCAL_Z, ISLAS[ISLAS.length - 1][0], TRONCAL_Z);          // troncal principal
-ISLAS.forEach(([xc, zc]) => { par(xc, TRONCAL_Z, xc, zc); par(xc - 0.4, zc, xc + 0.4, zc); });  // ramal a cada isla
-par(PROF[0], TRONCAL_Z, PROF[0], 0.4);                                       // profesor y pantalla
-par(PROF[0] - 0.4, PROF[1], PROF[0] + 0.4, PROF[1]);
+const parL = (u1, v1, u2, v2) => { const p = L(u1, v1), q = L(u2, v2); par(p[0], p[1], q[0], q[1]); };   // tendido en coordenadas del laboratorio
+parL(SERVIDOR_UV[0], SERVIDOR_UV[1], SERVIDOR_UV[0], TRONCAL_V);                          // salida del servidor
+parL(SERVIDOR_UV[0], TRONCAL_V, 0.3, TRONCAL_V);                                          // troncal hasta la pantalla y el profesor
+ISLAS_UV.forEach(([u, v]) => { parL(u, TRONCAL_V, u, v); parL(u - 0.4, v, u + 0.4, v); });   // ramal a cada isla
 
 // ================= PAREDES, PUERTA, LETRERO =================
 caja(DIM_X + 0.4, ALTO, 0.2, DIM_X / 2, ALTO / 2, -0.1, matWall);                 // fondo
@@ -506,7 +508,7 @@ pant.add(new THREE.Mesh(new THREE.BoxGeometry(1.26, 0.74, 0.05), matPC));
 const pg = new THREE.Mesh(new THREE.PlaneGeometry(1.22, 0.69), matGlow); pg.position.z = 0.026; pant.add(pg); R.add(pant);
 
 // ================= SERVIDOR (sobre el piso falso) =================
-const srv = new THREE.Group(); srv.position.set(SERVIDOR[0], H, SERVIDOR[1]); srv.rotation.y = 0;
+const srv = new THREE.Group(); srv.position.set(SERVIDOR[0], H, SERVIDOR[1]); srv.rotation.y = Math.PI / 2;
 const rack = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2.0, 1.0), matPC); rack.position.y = 1.0; rack.castShadow = true; srv.add(rack);
 const matMod = M('#1a202c', { metalness: 0.8 });
 for (let y = 0.2; y < 1.9; y += 0.2) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.15, 1.02), matMod); m.position.y = y; srv.add(m); }
@@ -548,8 +550,8 @@ function etiqueta(txt, x, z) {
 function verEtiquetas() { const v = !etiquetas[0].visible; etiquetas.forEach(e => e.visible = v); }
 
 let n = 0;
-ISLAS.forEach(([xc, zc]) => {   // isla: 2 filas enfrentadas, monitores espalda con espalda en el centro
-  [[-0.4, -0.3, Math.PI], [0.4, -0.3, Math.PI], [-0.4, 0.3, 0], [0.4, 0.3, 0]].forEach(([dx, dz, rot]) => {
+ISLAS.forEach(([xc, zc]) => {   // isla girada: filas norte/sur enfrentadas, monitores espalda con espalda; los alumnos quedan de lado a la pantalla
+  [[0.3, -0.4, Math.PI / 2], [0.3, 0.4, Math.PI / 2], [-0.3, -0.4, -Math.PI / 2], [-0.3, 0.4, -Math.PI / 2]].forEach(([dx, dz, rot]) => {
     estacion(xc + dx, zc + dz, rot); etiqueta('PC' + (++n), xc + dx, zc + dz);
   });
 });
@@ -560,8 +562,10 @@ estacion(PROF[0], PROF[1], Math.PI); etiqueta('PROFESOR', PROF[0], PROF[1]);
 const RACK_H = 1.2;                                   // altura del rack (aprox. 24U); más bajo que la pantalla para no taparla
 const RACK_X0 = 1.5, RACK_DX = 0.7;                   // posición inicial: x del primer rack y separación
 const RACK_FILAS = [[2.0, 0], [3.05, Math.PI]];       // posición inicial: [z, rotación]; la fila sur mira al norte
-const RACK_POS = null;                                // opcional: pega aquí las posiciones copiadas con el botón: [[x, z, rot], ...]
-const RACK_CLAVE = 'lab204_racks_v1';                 // clave donde se recuerdan las posiciones en este navegador
+const RACK_POS = [1.85, 2.55, 4.25, 4.95].map(u => [DIM_X - 0.25, u, -Math.PI / 2])     // pared norte: 2 racks junto a la isla oeste y 2 junto a la central
+  .concat([3.9, 4.6, 5.3, 6.3, 7.0, 7.7].map(u => [0.25, u, Math.PI / 2]));             // pared sur: 3 racks junto a la isla central y 3 junto a la este
+// (para fijar tus propias posiciones, pega aquí las copiadas con el botón: [[x, z, rot], ...])
+const RACK_CLAVE = 'lab204_racks_v2';                 // clave donde se recuerdan las posiciones en este navegador
 
 function texPanel(dibuja, w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; dibuja(c.getContext('2d'), w, h); return new THREE.CanvasTexture(c); }
 const texSwitch = texPanel((g, w, h) => {
@@ -602,8 +606,8 @@ racksMov.forEach((g, i) => etiqueta('RACK ' + (i + 1), racksIni[i].x, racksIni[i
 const etiquetasRack = etiquetas.slice(-racksMov.length);
 
 // ---- validez: dentro del cuarto y sin chocar con islas, profesor, servidor ni otros racks ----
-const OBST = ISLAS.map(([xc, zc]) => [xc - 0.8, xc + 0.8, zc - 1.025, zc + 1.025])
-  .concat([[PROF[0] - 0.4, PROF[0] + 0.4, PROF[1] - 0.73, PROF[1] + 0.3], [SERVIDOR[0] - 0.3, SERVIDOR[0] + 0.3, SERVIDOR[1] - 0.5, SERVIDOR[1] + 0.5]]);
+const OBST = ISLAS.map(([xc, zc]) => [xc - 1.025, xc + 1.025, zc - 0.8, zc + 0.8])
+  .concat([[PROF[0] - 0.4, PROF[0] + 0.4, PROF[1] - 0.73, PROF[1] + 0.3], [SERVIDOR[0] - 0.5, SERVIDOR[0] + 0.5, SERVIDOR[1] - 0.3, SERVIDOR[1] + 0.3]]);
 function huella(g) { const c = Math.abs(Math.cos(g.rotation.y)), s = Math.abs(Math.sin(g.rotation.y)), hx = c * 0.275 + s * 0.16, hz = s * 0.275 + c * 0.16; return [g.position.x - hx, g.position.x + hx, g.position.z - hz, g.position.z + hz]; }
 const solapa = (a, b) => !(a[1] <= b[0] || b[1] <= a[0] || a[3] <= b[2] || b[3] <= a[2]);
 function posicionValida(g) {
