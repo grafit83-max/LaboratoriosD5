@@ -23,20 +23,20 @@ body { margin: 0; overflow: hidden; background-color: #1a2230; font-family: 'Seg
 <div id="botones">
   <button onclick="irA('general')">Vista general</button>
   <button onclick="irA('planta')">Planta (desde arriba)</button>
-  <button onclick="irA('l211')">Lab 211</button>
+  <button onclick="irA('l104')">Lab 104</button>
   <button onclick="irA('l212')">Lab 212</button>
   <button onclick="irA('l204')">Lab 204</button>
   <button onclick="irA('a203')">Aula 203</button>
   <hr>
   <button onclick="recorrido()">Recorrido (caminar dentro)</button>
   <button onclick="alternarParedes()">Paredes: opacas / transparentes</button>
-  <button onclick="alternarPiso204()">Lab 204: piso falso transparente</button>
+  <button onclick="alternarPisos()">Pisos falsos transparentes (ver cableado)</button>
   <button onclick="puertasAbiertas = !puertasAbiertas">Abrir / cerrar puertas</button>
   <button onclick="verEtiquetas()">Mostrar / ocultar etiquetas de PC</button>
 </div>
 <div id="info">
   <h1>Edificio de laboratorios</h1>
-  <p>Lab 211: 19 PCs · Lab 212: 15 PCs + servidor + mini split<br>Lab 204: 24 PCs + profesor + 10 racks (piso falso 20 cm)<br>Racks del 204: arrástralos con el mouse · R: girar el seleccionado<br>Aula 203: 40 sillas hacia la TV<br><br>
+  <p>Lab 104: 37 PCs (9 islas con mesa redonda + profesor, piso falso 20 cm) · Lab 212: 15 PCs + servidor + mini split<br>Lab 204: 24 PCs + profesor + 10 racks + 18 contactos para racks (piso falso 20 cm)<br>Racks del 204: arrástralos con el mouse · R: girar el seleccionado<br>Aula 203: 40 sillas hacia la TV<br><br>
   Arrastrar: rotar · Rueda: zoom · Clic derecho: mover<br>W A S D / flechas: caminar · Q / E: bajar / subir · Shift: rápido</p>
 </div>
 <div id="autor">Render realizado por: Ing. Manuel Escamilla Arce</div>
@@ -88,7 +88,7 @@ function caja(root, w, h, d, x, y, z, mat, cast = true) {
   m.position.set(x, y, z); m.castShadow = cast; m.receiveShadow = true; root.add(m); return m;
 }
 // Muro de 20 cm con hueco opcional de puerta (1 m x 2.2 m). eje 'x': corre en x a z=fijo; eje 'z': corre en z a x=fijo
-function muro(root, eje, fijo, a0, a1, puertaC, aperturaRad) {
+function muro(root, eje, fijo, a0, a1, puertaC, aperturaRad, yB = 0) {
   const t = 0.2, AL = 3.4, hp = 2.2;
   const seg = (u0, u1, y0, y1) => {
     const L = u1 - u0, h = y1 - y0; if (L < 0.001 || h < 0.001) return;
@@ -96,14 +96,14 @@ function muro(root, eje, fijo, a0, a1, puertaC, aperturaRad) {
     else caja(root, t, h, L, fijo, (y0 + y1) / 2, (u0 + u1) / 2, MN.wall);
   };
   if (puertaC == null) { seg(a0, a1, 0, AL); return; }
-  seg(a0, puertaC - 0.5, 0, AL); seg(puertaC + 0.5, a1, 0, AL); seg(puertaC - 0.5, puertaC + 0.5, hp, AL);
-  [-0.5, 0.5].forEach(o => eje === 'x' ? caja(root, 0.08, hp, 0.25, puertaC + o, hp / 2, fijo, MN.frame, false)
-                                       : caja(root, 0.25, hp, 0.08, fijo, hp / 2, puertaC + o, MN.frame, false));
+  seg(a0, puertaC - 0.5, 0, AL); seg(puertaC + 0.5, a1, 0, AL); seg(puertaC - 0.5, puertaC + 0.5, hp + yB, AL);
+  [-0.5, 0.5].forEach(o => eje === 'x' ? caja(root, 0.08, hp, 0.25, puertaC + o, hp / 2 + yB, fijo, MN.frame, false)
+                                       : caja(root, 0.25, hp, 0.08, fijo, hp / 2 + yB, puertaC + o, MN.frame, false));
   const pivot = new THREE.Group();
   const panel = new THREE.Mesh(eje === 'x' ? new THREE.BoxGeometry(0.95, 2.15, 0.05) : new THREE.BoxGeometry(0.05, 2.15, 0.95), MN.door);
   panel.castShadow = true;
-  if (eje === 'x') { pivot.position.set(puertaC - 0.5, 0, fijo); panel.position.set(0.475, 1.075, 0); }
-  else { pivot.position.set(fijo, 0, puertaC - 0.5); panel.position.set(0, 1.075, 0.475); }
+  if (eje === 'x') { pivot.position.set(puertaC - 0.5, yB, fijo); panel.position.set(0.475, 1.075, 0); }
+  else { pivot.position.set(fijo, yB, puertaC - 0.5); panel.position.set(0, 1.075, 0.475); }
   pivot.add(panel); pivot.rotation.y = aperturaRad; root.add(pivot);
   puertas.push({ pivot, abierta: aperturaRad });
 }
@@ -133,8 +133,8 @@ function crearSilla() {   // respaldo hacia +z local; la persona mira hacia -z
   return ch;
 }
 const legGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.75, 16);
-function estacionN(root, x, z, rotY) {   // mismo puesto que el lab 204 (escritorio 80 cm, CPU bajo el escritorio, mouse)
-  const st = new THREE.Group(); st.position.set(x, 0, z); st.rotation.y = rotY;
+function estacionN(root, x, z, rotY, h = 0) {   // mismo puesto que el lab 204 (escritorio 80 cm, CPU bajo el escritorio, mouse)
+  const st = new THREE.Group(); st.position.set(x, h, z); st.rotation.y = rotY;
   const add = (geo, mat, px, py, pz, cast = true) => { const m = new THREE.Mesh(geo, mat); m.position.set(px, py, pz); m.castShadow = cast; m.receiveShadow = true; st.add(m); return m; };
   add(new THREE.BoxGeometry(0.8, 0.05, 0.6), MN.desk, 0, 0.75, 0);
   [[-0.35, -0.2], [0.35, -0.2], [-0.35, 0.2], [0.35, 0.2]].forEach(p => add(legGeo, MN.metal, p[0], 0.375, p[1]));
@@ -165,6 +165,21 @@ function rotulo(txt, x, y, z) {   // nombre de la sala, siempre visible
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false }));
   sp.scale.set(3.2, 0.8, 1); sp.position.set(x, y, z); sp.renderOrder = 10; scene.add(sp);
 }
+
+function gridTexN(bg, ln, nx, nz) {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'); g.fillStyle = bg; g.fillRect(0, 0, 128, 128);
+  g.strokeStyle = ln; g.lineWidth = 5; g.strokeRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(nx, nz); t.anisotropy = 8; return t;
+}
+function crearTexContacto() {   // placa con dos contactos dobles (tipo NEMA 5-15)
+  const c = document.createElement('canvas'); c.width = 96; c.height = 144;
+  const g = c.getContext('2d'); g.fillStyle = '#f2f2ee'; g.fillRect(0, 0, 96, 144);
+  g.strokeStyle = '#c9c9c2'; g.lineWidth = 3; g.strokeRect(2, 2, 92, 140); g.fillStyle = '#222';
+  [0, 1].forEach(q => { const cy = 38 + q * 68; g.fillRect(28, cy - 14, 7, 20); g.fillRect(61, cy - 14, 7, 20); g.beginPath(); g.arc(48, cy + 16, 5, 0, 6.2832); g.fill(); });
+  return new THREE.CanvasTexture(c);
+}
+function alternarPisos() { window.alternarPiso204(); window.alternarPiso104(); }
 
 // ============================ LAB 212 (tu código, sin mini split) ============================
 function build212(root) {
@@ -472,6 +487,28 @@ parL(SERVIDOR_UV[0], SERVIDOR_UV[1], SERVIDOR_UV[0], TRONCAL_V);                
 parL(SERVIDOR_UV[0], TRONCAL_V, 0.3, TRONCAL_V);                                          // troncal hasta la pantalla y el profesor
 ISLAS_UV.forEach(([u, v]) => { parL(u, TRONCAL_V, u, v); parL(u - 0.4, v, u + 0.4, v); });   // ramal a cada isla
 
+// ================= CONTACTOS DE LUZ PARA LOS RACKS: 9 por pared (norte y sur) =================
+// Cada rack se conecta a un contacto pegado a la pared. Hoy hay 4 racks al norte y 6 al sur; después podrán ser 9 por lado.
+const CONTACTOS_U = {
+  norte: [0.65, 1.35, 2.05, 2.75, 3.45, 4.15, 4.85, 6.9, 7.6],   // u de cada contacto; la puerta (5.45 a 6.45) queda entre el 4.85 y el 6.9
+  sur:   [2.0, 2.7, 3.4, 4.1, 4.8, 5.5, 6.2, 6.9, 7.6]
+};
+const matContactoPlaca = new THREE.MeshBasicMaterial({ map: crearTexContacto() });
+const matCajaContacto = M('#ecece6', { roughness: 0.5 }), matTuboContacto = M('#d7d7d0', { roughness: 0.5 });
+Object.entries(CONTACTOS_U).forEach(([lado, lista]) => {
+  const norte = lado === 'norte', pared = norte ? DIM_X : 0, sg = norte ? -1 : 1;   // sg: hacia dentro del cuarto
+  lista.forEach(u => {
+    const hy = H + 0.30;                                                                              // contacto a 30 cm sobre el piso falso
+    caja(0.035, 0.13, 0.085, pared + sg * 0.0175, hy, u, matCajaContacto, false);                     // caja de contacto pegada a la pared
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(0.075, 0.12), matContactoPlaca);                 // placa con 2 contactos dobles
+    p.position.set(pared + sg * 0.0365, hy, u); p.rotation.y = norte ? -Math.PI / 2 : Math.PI / 2; R.add(p);
+    const yb = 0.075, yt = hy - 0.065, xi = pared + sg * 0.0105;                                      // tubo conduit: desde bajo el piso hasta la caja
+    caja(0.021, yt - yb, 0.021, xi, (yb + yt) / 2, u, matTuboContacto, false);
+    const xt = DIM_X - TRONCAL_V - 0.07;                                                              // cable rojo desde el troncal eléctrico hasta el tubo
+    const c = new THREE.Mesh(new THREE.BoxGeometry(Math.abs(xi - xt), 0.04, 0.04), matRojo); c.position.set((xi + xt) / 2, 0.1, u); R.add(c);
+  });
+});
+
 // ================= PAREDES, PUERTA, LETRERO =================
 caja(DIM_X + 0.4, ALTO, 0.2, DIM_X / 2, ALTO / 2, -0.1, matWall);                 // fondo
 caja(0.2, ALTO, DIM_Z, -0.1, ALTO / 2, DIM_Z / 2, matWall);                        // izquierda
@@ -562,10 +599,10 @@ estacion(PROF[0], PROF[1], Math.PI); etiqueta('PROFESOR', PROF[0], PROF[1]);
 const RACK_H = 1.2;                                   // altura del rack (aprox. 24U); más bajo que la pantalla para no taparla
 const RACK_X0 = 1.5, RACK_DX = 0.7;                   // posición inicial: x del primer rack y separación
 const RACK_FILAS = [[2.0, 0], [3.05, Math.PI]];       // posición inicial: [z, rotación]; la fila sur mira al norte
-const RACK_POS = [1.85, 2.55, 4.25, 4.95].map(u => [DIM_X - 0.25, u, -Math.PI / 2])     // pared norte: 2 racks junto a la isla oeste y 2 junto a la central
-  .concat([3.9, 4.6, 5.3, 6.3, 7.0, 7.7].map(u => [0.25, u, Math.PI / 2]));             // pared sur: 3 racks junto a la isla central y 3 junto a la este
+const RACK_POS = [2.05, 2.75, 4.15, 4.85].map(u => [DIM_X - 0.35, u, -Math.PI / 2])     // pared norte: 2 racks junto a la isla oeste y 2 junto a la central (cada uno frente a un contacto)
+  .concat([4.1, 4.8, 5.5, 6.2, 6.9, 7.6].map(u => [0.35, u, Math.PI / 2]));             // pared sur: 3 racks junto a la isla central y 3 junto a la este
 // (para fijar tus propias posiciones, pega aquí las copiadas con el botón: [[x, z, rot], ...])
-const RACK_CLAVE = 'lab204_racks_v2';                 // clave donde se recuerdan las posiciones en este navegador
+const RACK_CLAVE = 'lab204_racks_v3';                 // clave donde se recuerdan las posiciones en este navegador
 
 function texPanel(dibuja, w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; dibuja(c.getContext('2d'), w, h); return new THREE.CanvasTexture(c); }
 const texSwitch = texPanel((g, w, h) => {
@@ -608,7 +645,7 @@ const etiquetasRack = etiquetas.slice(-racksMov.length);
 // ---- validez: dentro del cuarto y sin chocar con islas, profesor, servidor ni otros racks ----
 const OBST = ISLAS.map(([xc, zc]) => [xc - 1.025, xc + 1.025, zc - 0.8, zc + 0.8])
   .concat([[PROF[0] - 0.4, PROF[0] + 0.4, PROF[1] - 0.73, PROF[1] + 0.3], [SERVIDOR[0] - 0.5, SERVIDOR[0] + 0.5, SERVIDOR[1] - 0.3, SERVIDOR[1] + 0.3]]);
-function huella(g) { const c = Math.abs(Math.cos(g.rotation.y)), s = Math.abs(Math.sin(g.rotation.y)), hx = c * 0.275 + s * 0.16, hz = s * 0.275 + c * 0.16; return [g.position.x - hx, g.position.x + hx, g.position.z - hz, g.position.z + hz]; }
+function huella(g) { const c = Math.abs(Math.cos(g.rotation.y)), s = Math.abs(Math.sin(g.rotation.y)), hx = c * 0.275 + s * 0.24, hz = s * 0.275 + c * 0.24; return [g.position.x - hx, g.position.x + hx, g.position.z - hz, g.position.z + hz]; }
 const solapa = (a, b) => !(a[1] <= b[0] || b[1] <= a[0] || a[3] <= b[2] || b[3] <= a[2]);
 function posicionValida(g) {
   const r = huella(g);
@@ -692,23 +729,96 @@ window.racks204 = { racksMov, posicionValida, restablecerRacks };
   return { doorPivot, abierta: Math.PI / 3, etiquetas, matWall, alternarPiso };
 }
 
-// ============================ LAB 211 (según croquis) ============================
-// Interior: x 0..9, z 0..7. Pantalla en la pared oeste, puerta en la pared sur (hacia el pasillo).
-function build211(root) {
-  piso(root, 9, 7, 4.5, 3.5);
-  muro(root, 'x', -0.1, -0.2, 9.2, null);                // norte
-  muro(root, 'z', -0.1, -0.2, 7.2, null);                // oeste (pantalla)
-  muro(root, 'z', 9.1, -0.2, 7.2, null);                 // este
-  muro(root, 'x', 7.1, -0.2, 9.2, 6.9, -Math.PI / 3);    // sur con puerta (abre hacia el pasillo)
-  letrero(root, 'LABORATORIO 211', 4.5, 3.0, 0.01, 0);
-  pantalla55(root, 0.04, 1.9, 3.5, Math.PI / 2);
-  const S = [];
-  [5.2, 6.15, 7.1, 8.05].forEach(x => S.push([x, 1.0, 0]));                          // fila superior (4): mira al norte
-  [2.5, 3.4, 4.3].forEach(z => S.push([5.75, z, Math.PI / 2]));                      // columna 1 (3): mira a la pantalla
-  [2.5, 3.4, 4.3, 5.2].forEach(z => S.push([8.0, z, Math.PI / 2]));                  // columna 2 (4): mira a la pantalla
-  [1.1, 2.0, 3.05, 3.95, 5.0, 5.9, 6.95, 7.85].forEach(x => S.push([x, 6.1, 0]));    // fila inferior (8): mira al norte
-  S.forEach(([x, z, r], i) => { estacionN(root, x, z, r); etiquetaPC(root, 'PC' + (i + 1), x, 1.55, z); });
-  return { n: S.length };
+// ============================ LAB 104 (antes 211): piso falso + 9 islas con mesa redonda ============================
+// Interior en el edificio: x -3..9, z -2..7 (12 x 9 m; SUPUESTO: 37 PCs no caben en 9 x 7). u = este (desde la pared de la pantalla), v = sur.
+function build104(root) {
+  const DX = 12, DZ = 9, H = 0.20, PANEL = 0.60, OX = -3, OZ = -2;
+  const X = u => OX + u, Z = v => OZ + v;
+  const ISLAS104 = []; [1.5, 4.5, 7.5].forEach(v => [3.9, 7.1, 10.3].forEach(u => ISLAS104.push([u, v])));   // 9 islas de 4 PCs
+  const PROF104 = [1.2, 4.5];            // escritorio del profesor, frente a la pantalla
+  const PUERTA_U = 5.5;                  // puerta en la pared sur, en el pasillo entre las columnas 1 y 2
+  const TRONCAL_U = 2.4;                 // troncal vertical bajo el piso, en el pasillo oeste
+  const matRojo = new THREE.MeshStandardMaterial({ color: '#e53e3e', emissive: '#7a1d1d', roughness: 0.6 });
+  const matAzul = new THREE.MeshStandardMaterial({ color: '#3182ce', emissive: '#17406e', roughness: 0.6 });
+  const matNegro = new THREE.MeshStandardMaterial({ color: '#111418', roughness: 0.8 });
+  const matMesa = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.4 });
+  const matContacto = new THREE.MeshBasicMaterial({ map: crearTexContacto() });
+
+  // --- pisos: cerámico + piso falso de 20 cm con pedestales ---
+  const ceramico = new THREE.Mesh(new THREE.PlaneGeometry(DX, DZ), new THREE.MeshStandardMaterial({ map: gridTexN('#e9e1d3', '#bfb5a3', DX / 0.4, DZ / 0.4), roughness: 0.3 }));
+  ceramico.rotation.x = -Math.PI / 2; ceramico.position.set(X(DX / 2), 0.001, Z(DZ / 2)); ceramico.receiveShadow = true; root.add(ceramico);
+  const matPiso = new THREE.MeshStandardMaterial({ map: gridTexN('#dfe4e8', '#9aa5b1', DX / PANEL, DZ / PANEL), roughness: 0.5 });
+  const piso = new THREE.Mesh(new THREE.BoxGeometry(DX, 0.04, DZ), matPiso);
+  piso.position.set(X(DX / 2), H - 0.02, Z(DZ / 2)); piso.castShadow = true; piso.receiveShadow = true; root.add(piso);
+  const nx = Math.floor(DX / PANEL) + 1, nz = Math.floor(DZ / PANEL) + 1;
+  const ped = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.025, 0.025, H - 0.04, 10), MN.metal, nx * nz);
+  const dm = new THREE.Object3D(); let k = 0;
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) { dm.position.set(X(i * PANEL), (H - 0.04) / 2, Z(j * PANEL)); dm.updateMatrix(); ped.setMatrixAt(k++, dm.matrix); }
+  root.add(ped);
+  let transp = false;
+  function alternarPiso() { transp = !transp; matPiso.transparent = true; matPiso.opacity = transp ? 0.12 : 1; matPiso.depthWrite = !transp; matPiso.needsUpdate = true; piso.castShadow = !transp; }
+
+  // --- paredes, puerta (abre hacia el pasillo), rampa exterior, letrero y pantalla ---
+  muro(root, 'x', Z(-0.1), X(-0.2), X(DX + 0.2), null);                              // norte
+  muro(root, 'z', X(-0.1), Z(-0.2), Z(DZ + 0.2), null);                              // oeste (pantalla)
+  muro(root, 'z', X(DX + 0.1), Z(-0.2), Z(DZ + 0.2), null);                          // este (junto al 212)
+  muro(root, 'x', Z(DZ + 0.1), X(-0.2), X(DX + 0.2), X(PUERTA_U), -Math.PI / 3, H);  // sur, con puerta
+  const lr = 1.6, rampa = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, Math.hypot(lr, H)), new THREE.MeshStandardMaterial({ color: '#a0aec0', roughness: 0.6 }));
+  rampa.position.set(X(PUERTA_U), H / 2 - 0.02, Z(DZ) + 0.2 + lr / 2); rampa.rotation.x = Math.atan(H / lr); rampa.castShadow = true; root.add(rampa);
+  letrero(root, 'LABORATORIO 104', X(DX / 2), 3.0, Z(0) + 0.01, 0);
+  pantalla55(root, X(0) + 0.04, H + 1.9, Z(4.5), Math.PI / 2);
+
+  // --- profesor ---
+  estacionN(root, X(PROF104[0]), Z(PROF104[1]), -Math.PI / 2, H);
+  etiquetaPC(root, 'PROFESOR', X(PROF104[0]), H + 1.55, Z(PROF104[1]));
+
+  // --- isla: mesa redonda de 1.40 m con módulo de contactos al centro y 4 puestos ---
+  let n = 0;
+  function mesaRedonda(cx, cz) {
+    const g = new THREE.Group(); g.position.set(cx, H, cz); root.add(g);
+    const add = (parent, geo, mat, x, y, z, cast = true) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = cast; m.receiveShadow = true; parent.add(m); return m; };
+    add(g, new THREE.CylinderGeometry(0.7, 0.7, 0.04, 40), matMesa, 0, 0.75, 0);                 // tablero
+    add(g, new THREE.CylinderGeometry(0.06, 0.06, 0.73, 16), MN.metal, 0, 0.375, 0);             // columna central (por aquí sube el cableado)
+    add(g, new THREE.CylinderGeometry(0.3, 0.3, 0.02, 32), MN.metal, 0, 0.01, 0);                // base
+    add(g, new THREE.CylinderGeometry(0.09, 0.09, 0.11, 20), MN.frame, 0, 0.83, 0);              // módulo de contactos al centro de la mesa
+    for (let q = 0; q < 4; q++) {
+      const th = q * Math.PI / 2, s = new THREE.Group(); s.rotation.y = th; g.add(s);            // s: +z apunta hacia afuera, donde se sienta el alumno
+      const p = new THREE.Mesh(new THREE.PlaneGeometry(0.07, 0.07), matContacto); p.position.set(0, 0.83, 0.0915); s.add(p);   // placa de contactos
+      add(s, new THREE.BoxGeometry(0.012, 0.012, 0.2), matNegro, 0, 0.785, 0.19, false);         // cable del contacto al monitor
+      add(s, new THREE.BoxGeometry(0.2, 0.02, 0.15), MN.pc, 0, 0.785, 0.32, false);              // base del monitor
+      add(s, new THREE.CylinderGeometry(0.02, 0.02, 0.15), MN.pc, 0, 0.85, 0.32, false);
+      add(s, new THREE.BoxGeometry(0.55, 0.35, 0.04), MN.pc, 0, 1.0, 0.32).rotation.x = -0.05;    // monitor
+      add(s, new THREE.PlaneGeometry(0.51, 0.31), MN.glow, 0, 1.0, 0.345, false).rotation.x = -0.05;
+      add(s, new THREE.BoxGeometry(0.4, 0.01, 0.15), MN.pc, 0, 0.78, 0.56, false);                // teclado
+      add(s, new THREE.BoxGeometry(0.14, 0.004, 0.18), MN.chair, 0.28, 0.777, 0.5, false);        // tapete
+      add(s, new THREE.BoxGeometry(0.06, 0.025, 0.1), MN.pc, 0.28, 0.7915, 0.5);                  // mouse
+      add(s, new THREE.BoxGeometry(0.008, 0.004, 0.025), MN.metal, 0.28, 0.805, 0.475, false);
+      add(s, new THREE.BoxGeometry(0.18, 0.4, 0.4), MN.pc, 0.32, 0.2, 0.22);                      // CPU bajo la mesa
+      const ch = crearSilla(); ch.position.set(0, 0, 0.85); s.add(ch);                            // silla
+      etiquetaPC(root, 'PC' + (++n), cx + 0.6 * Math.sin(th), H + 1.55, cz + 0.6 * Math.cos(th));
+    }
+    [[-0.035, matRojo], [0.035, matAzul]].forEach(([dx, m]) => {                                   // bajantes del piso falso por la columna
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.025, H - 0.05, 0.025), m); b.position.set(cx + dx, (0.05 + H) / 2, cz); root.add(b);
+    });
+  }
+  ISLAS104.forEach(([u, v]) => mesaRedonda(X(u), Z(v)));
+
+  // --- cableado bajo el piso falso (rojo = eléctrico, azul = red), visible con el piso transparente ---
+  function cab(u1, v1, u2, v2, mat, off) {
+    const horiz = Math.abs(u2 - u1) >= Math.abs(v2 - v1), len = Math.hypot(u2 - u1, v2 - v1);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(horiz ? len : 0.05, 0.05, horiz ? 0.05 : len), mat);
+    m.position.set(X((u1 + u2) / 2) + (horiz ? 0 : off), 0.05, Z((v1 + v2) / 2) + (horiz ? off : 0)); root.add(m);
+  }
+  const par = (u1, v1, u2, v2) => { cab(u1, v1, u2, v2, matRojo, -0.07); cab(u1, v1, u2, v2, matAzul, 0.07); };
+  const vT = 8.3;                                                                       // tablero eléctrico en la pared oeste, extremo sur
+  caja(root, 0.15, 0.7, 0.5, X(0) + 0.075, H + 1.4, Z(vT), MN.metal);
+  caja(root, 0.02, 0.6, 0.4, X(0) + 0.16, H + 1.4, Z(vT), MN.pc, false);
+  caja(root, 0.05, H + 1.0, 0.05, X(0) + 0.075, (0.05 + H + 1.05) / 2, Z(vT), MN.canal, false);   // tubo del tablero hacia el piso falso
+  par(0.2, vT, TRONCAL_U, vT);                                                          // acometida
+  par(TRONCAL_U, vT, TRONCAL_U, 0.6);                                                   // troncal por el pasillo oeste
+  [1.5, 4.5, 7.5].forEach(v => par(TRONCAL_U, v, 10.3, v));                             // un alimentador por fila de islas
+  par(0.3, 4.5, TRONCAL_U, 4.5);                                                        // profesor y pantalla
+  return { n, alternarPiso };
 }
 
 // ============================ AULA 203: 40 sillas hacia la TV ============================
@@ -735,10 +845,10 @@ function build203(root) {
 (function () {
   const ext = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), new THREE.MeshStandardMaterial({ color: '#cbd5e0', roughness: 0.95 }));
   ext.rotation.x = -Math.PI / 2; ext.position.set(9.2, -0.03, 7.5); ext.receiveShadow = true; scene.add(ext);
-  const pas = new THREE.Mesh(new THREE.PlaneGeometry(19, 2.6), new THREE.MeshStandardMaterial({ color: '#e9e1d3', roughness: 0.4 }));
-  pas.rotation.x = -Math.PI / 2; pas.position.set(9.2, 0.003, 8.5); pas.receiveShadow = true; scene.add(pas);
+  const pas = new THREE.Mesh(new THREE.PlaneGeometry(21.8, 2.6), new THREE.MeshStandardMaterial({ color: '#e9e1d3', roughness: 0.4 }));
+  pas.rotation.x = -Math.PI / 2; pas.position.set(7.7, 0.003, 8.5); pas.receiveShadow = true; scene.add(pas);
 
-  const g211 = new THREE.Group(); scene.add(g211); build211(g211);
+  const g104 = new THREE.Group(); scene.add(g104); const r104 = build104(g104); window.alternarPiso104 = r104.alternarPiso;
 
   const g212 = new THREE.Group(); g212.position.set(12.9, 0, 2.5); g212.rotation.y = Math.PI; scene.add(g212);
   const r212 = build212(g212);
@@ -753,7 +863,7 @@ function build203(root) {
 
   const g203 = new THREE.Group(); scene.add(g203); build203(g203);
 
-  rotulo('LAB 211', 4.5, 4.2, 3.5); rotulo('LAB 212', 12.9, 4.2, 2.5);
+  rotulo('LAB 104', 3.0, 4.2, 2.5); rotulo('LAB 212', 12.9, 4.2, 2.5);
   rotulo('LAB 204', 4.5, 4.2, 13.5); rotulo('AULA 203', 13.9, 4.2, 13.5); rotulo('PASILLO', 9.2, 1.0, 8.5);
 })();
 
@@ -768,12 +878,13 @@ aplicarParedes();
 function verEtiquetas() { const v = !etiquetasPC[0].visible; etiquetasPC.forEach(e => e.visible = v); }
 
 const V = THREE.Vector3;
-const cen = { l211: [4.5, 3.5], l212: [12.9, 2.5], l204: [4.5, 13.5], a203: [13.9, 13.5] };
+const cen = { l104: [3.0, 2.5], l212: [12.9, 2.5], l204: [4.5, 13.5], a203: [13.9, 13.5] };
 const VISTAS = {
-  general: [new V(-5, 26, 32), new V(9.2, 0, 8)],
-  planta: [new V(9.2, 27, 7.6), new V(9.2, 0, 7.5)]
+  general: [new V(-8, 27, 34), new V(7.7, 0, 8)],
+  planta: [new V(7.7, 30, 7.6), new V(7.7, 0, 7.5)]
 };
 Object.keys(cen).forEach(k => { const [x, z] = cen[k]; VISTAS[k] = [new V(x - 3, 11, z + 9), new V(x, 1, z)]; });
+VISTAS.l104 = [new V(-1, 15, 13), new V(3, 1, 2.5)];
 camera.position.copy(VISTAS.general[0]); controls.target.copy(VISTAS.general[1]);
 let destino = null;
 function irA(n) { modoRecorrido(false); destino = { p: VISTAS[n][0].clone(), t: VISTAS[n][1].clone() }; }
