@@ -36,7 +36,7 @@ body { margin: 0; overflow: hidden; background-color: #1a2230; font-family: 'Seg
 </div>
 <div id="info">
   <h1>Edificio de laboratorios</h1>
-  <p>Lab 104: 37 PCs (9 islas con mesa redonda + profesor, piso falso 20 cm) · Lab 212: 15 PCs + servidor + mini split<br>Lab 204: 24 PCs + profesor + 10 racks + 18 contactos para racks (piso falso 20 cm)<br>Racks del 204: arrástralos con el mouse · R: girar el seleccionado<br>Aula 203: 40 sillas hacia la TV<br><br>
+  <p>Lab 104: 29 PCs (7 islas con mesa redonda + profesor, piso falso 20 cm) · Lab 212: 15 PCs + servidor + mini split<br>Lab 204: 24 PCs + profesor + 10 racks + 18 contactos para racks (piso falso 20 cm)<br>Racks del 204: arrástralos con el mouse · R: girar el seleccionado<br>Aula 203: 40 sillas hacia la TV<br><br>
   Arrastrar: rotar · Rueda: zoom · Clic derecho: mover<br>W A S D / flechas: caminar · Q / E: bajar / subir · Shift: rápido</p>
 </div>
 <div id="autor">Render realizado por: Ing. Manuel Escamilla Arce</div>
@@ -729,14 +729,14 @@ window.racks204 = { racksMov, posicionValida, restablecerRacks };
   return { doorPivot, abierta: Math.PI / 3, etiquetas, matWall, alternarPiso };
 }
 
-// ============================ LAB 104 (antes 211): piso falso + 9 islas con mesa redonda ============================
-// Interior en el edificio: x -3..9, z -2..7 (12 x 9 m; SUPUESTO: 37 PCs no caben en 9 x 7). u = este (desde la pared de la pantalla), v = sur.
+// ============================ LAB 104 (antes 211): piso falso + 7 islas con mesa redonda ============================
+// Interior en el edificio: x -3..9, z -2..7 (12 x 9 m; SUPUESTO: 29 PCs en islas redondas no caben en 9 x 7). u = este (desde la pared de la pantalla), v = sur.
 function build104(root) {
   const DX = 12, DZ = 9, H = 0.20, PANEL = 0.60, OX = -3, OZ = -2;
   const X = u => OX + u, Z = v => OZ + v;
-  const ISLAS104 = []; [1.5, 4.5, 7.5].forEach(v => [3.9, 7.1, 10.3].forEach(u => ISLAS104.push([u, v])));   // 9 islas de 4 PCs
+  const ISLAS104 = [[5.5, 1.5], [8.7, 1.5], [3.9, 4.5], [7.1, 4.5], [10.3, 4.5], [5.5, 7.5], [8.7, 7.5]];   // 7 islas de 4 PCs en tresbolillo (2-3-2): [u, v]
   const PROF104 = [1.2, 4.5];            // escritorio del profesor, frente a la pantalla
-  const PUERTA_U = 5.5;                  // puerta en la pared sur, en el pasillo entre las columnas 1 y 2
+  const PUERTA_U = 2.5;                  // puerta en la pared sur, en la esquina oeste libre de islas
   const TRONCAL_U = 2.4;                 // troncal vertical bajo el piso, en el pasillo oeste
   const matRojo = new THREE.MeshStandardMaterial({ color: '#e53e3e', emissive: '#7a1d1d', roughness: 0.6 });
   const matAzul = new THREE.MeshStandardMaterial({ color: '#3182ce', emissive: '#17406e', roughness: 0.6 });
@@ -816,7 +816,7 @@ function build104(root) {
   caja(root, 0.05, H + 1.0, 0.05, X(0) + 0.075, (0.05 + H + 1.05) / 2, Z(vT), MN.canal, false);   // tubo del tablero hacia el piso falso
   par(0.2, vT, TRONCAL_U, vT);                                                          // acometida
   par(TRONCAL_U, vT, TRONCAL_U, 0.6);                                                   // troncal por el pasillo oeste
-  [1.5, 4.5, 7.5].forEach(v => par(TRONCAL_U, v, 10.3, v));                             // un alimentador por fila de islas
+  [[1.5, 8.7], [4.5, 10.3], [7.5, 8.7]].forEach(([v, ue]) => par(TRONCAL_U, v, ue, v));   // un alimentador por fila de islas
   par(0.3, 4.5, TRONCAL_U, 4.5);                                                        // profesor y pantalla
   return { n, alternarPiso };
 }
